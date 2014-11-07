@@ -495,6 +495,8 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_CUSTOM1;
 			else if (!strcmp(seq_name, "sensor_gpio_custom2"))
 				ps[i].seq_val = SENSOR_GPIO_CUSTOM2;
+			else if (!strcmp(seq_name, "sensor_gpio_af_pwdm"))
+				ps[i].seq_val = SENSOR_GPIO_AF_PWDM;
 			else
 				rc = -EILSEQ;
 			break;
