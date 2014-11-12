@@ -107,7 +107,9 @@ static bool mhl_det_in_progress;
 static struct regulator *hsusb_3p3;
 static struct regulator *hsusb_1p8;
 static struct regulator *hsusb_vdd;
+#ifndef CONFIG_YL_BQ24157_CHARGER
 static struct regulator *vbus_otg;
+#endif
 static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
@@ -2007,6 +2009,10 @@ out:
 	return NOTIFY_OK;
 }
 
+#ifdef CONFIG_YL_BQ24157_CHARGER
+extern int bq24157_enable_otg_mode(void);
+extern int bq24157_disable_otg_mode(void);
+#endif
 static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 {
 	int ret;
@@ -2022,10 +2028,12 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 		return;
 	}
 
+#ifndef CONFIG_YL_BQ24157_CHARGER
 	if (!vbus_otg) {
 		pr_err("vbus_otg is NULL.");
 		return;
 	}
+#endif
 
 	/*
 	 * if entering host mode tell the charger to not draw any current
@@ -2035,14 +2043,22 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 	 */
 	if (on) {
 		msm_otg_notify_host_mode(motg, on);
+#ifdef CONFIG_YL_BQ24157_CHARGER
+		ret = bq24157_enable_otg_mode();
+#else
 		ret = regulator_enable(vbus_otg);
+#endif
 		if (ret) {
 			pr_err("unable to enable vbus_otg\n");
 			return;
 		}
 		vbus_is_on = true;
 	} else {
+#ifdef CONFIG_YL_BQ24157_CHARGER
+		ret = bq24157_disable_otg_mode();
+#else
 		ret = regulator_disable(vbus_otg);
+#endif
 		if (ret) {
 			pr_err("unable to disable vbus_otg\n");
 			return;
@@ -2066,6 +2082,7 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 		return -ENODEV;
 	}
 
+#ifndef CONFIG_YL_BQ24157_CHARGER
 	if (!motg->pdata->vbus_power && host) {
 		vbus_otg = devm_regulator_get(motg->phy.dev, "vbus_otg");
 		if (IS_ERR(vbus_otg)) {
@@ -2073,6 +2090,7 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 			return PTR_ERR(vbus_otg);
 		}
 	}
+#endif
 
 	if (!host) {
 		if (otg->phy->state == OTG_STATE_A_HOST) {
@@ -2915,7 +2933,11 @@ static void msm_chg_detect_work(struct work_struct *w)
 		/* Enable VDP_SRC in case of DCP charger */
 		if (motg->chg_type == USB_DCP_CHARGER)
 			ulpi_write(phy, 0x2, 0x85);
-
+#ifdef CONFIG_MACH_YULONG
+		/* Enable VDP_SRC in case of DCP charger */
+		if (motg->chg_type == USB_DCP_CHARGER)
+			ulpi_write(phy, 0x2, 0x85);
+#endif
 		dev_dbg(phy->dev, "chg_type = %s\n",
 			chg_to_string(motg->chg_type));
 		queue_work(system_nrt_wq, &motg->sm_work);
@@ -3123,6 +3145,10 @@ static void msm_otg_sm_work(struct work_struct *w)
 			case USB_CHG_STATE_DETECTED:
 				switch (motg->chg_type) {
 				case USB_DCP_CHARGER:
+#ifndef CONFIG_MACH_YULONG
+					/* Enable VDP_SRC */
+					ulpi_write(otg->phy, 0x2, 0x85);
+#endif
 					/* fall through */
 				case USB_PROPRIETARY_CHARGER:
 					msm_otg_notify_charger(motg,
@@ -3158,6 +3184,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 						OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
+#ifdef CONFIG_MACH_YULONG
+					msm_otg_set_power(otg->phy, 500);
+#endif
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
@@ -4313,44 +4342,31 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		psy->type = val->intval;
-
-		/*
-		 * If charger detection is done by the USB driver,
-		 * motg->chg_type is already assigned in the
-		 * charger detection work.
-		 *
-		 * There is a possibility of overriding the
-		 * actual charger type with power supply type
-		 * charger. For example USB PROPRIETARY charger
-		 * does not exist in power supply enum and it
-		 * gets overridden as DCP.
-		 */
-		if (motg->chg_state == USB_CHG_STATE_DETECTED)
-			break;
-
+#ifdef CONFIG_MACH_YULONG
 		switch (psy->type) {
-		case POWER_SUPPLY_TYPE_USB:
-			motg->chg_type = USB_SDP_CHARGER;
-			break;
-		case POWER_SUPPLY_TYPE_USB_DCP:
-			motg->chg_type = USB_DCP_CHARGER;
-			break;
-		case POWER_SUPPLY_TYPE_USB_CDP:
-			motg->chg_type = USB_CDP_CHARGER;
-			break;
-		case POWER_SUPPLY_TYPE_USB_ACA:
-			motg->chg_type = USB_PROPRIETARY_CHARGER;
-			break;
-		default:
-			motg->chg_type = USB_INVALID_CHARGER;
-			break;
+			case POWER_SUPPLY_TYPE_USB:
+				motg->chg_type = USB_SDP_CHARGER;
+				break;
+			case POWER_SUPPLY_TYPE_USB_DCP:
+				motg->chg_type = USB_DCP_CHARGER;
+				break;
+			case POWER_SUPPLY_TYPE_USB_CDP:
+				motg->chg_type = USB_CDP_CHARGER;
+				break;
+			case POWER_SUPPLY_TYPE_USB_ACA:
+				motg->chg_type = USB_PROPRIETARY_CHARGER;
+				break;
+			default:
+				motg->chg_type = USB_INVALID_CHARGER;
+				break;
 		}
 
 		if (motg->chg_type != USB_INVALID_CHARGER)
 			motg->chg_state = USB_CHG_STATE_DETECTED;
 
 		dev_dbg(motg->phy.dev, "%s: charger type = %s\n", __func__,
-			chg_to_string(motg->chg_type));
+				chg_to_string(motg->chg_type));
+#endif
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		motg->usbin_health = val->intval;
