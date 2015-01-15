@@ -105,7 +105,7 @@ int32_t msm_led_torch_create_classdev(struct platform_device *pdev,
 
 	torch_trigger = fctrl->torch_trigger;
 #endif
-	msm_led_torch_brightness_set(&msm_torch_led, LED_OFF);
+	msm_led_torch_brightness_set(&msm_torch_led[i], LED_OFF);
 
 			rc = led_classdev_register(&pdev->dev,
 				&msm_torch_led[i]);
@@ -114,11 +114,11 @@ int32_t msm_led_torch_create_classdev(struct platform_device *pdev,
 						i, rc);
 				return rc;
 			}
-		} else {
+		 else {
 			pr_err("Invalid fctrl->torch_trigger[%d]\n", i);
 			return -EINVAL;
 		}
-	}
+	
 
 	return 0;
 };

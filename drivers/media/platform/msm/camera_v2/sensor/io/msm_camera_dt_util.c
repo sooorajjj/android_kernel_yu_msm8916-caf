@@ -1530,7 +1530,6 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[pd->seq_val])
 				continue;
-
 #ifdef CONFIG_MACH_YULONG
 			CDBG("%s:%d gpio set val %d\n", __func__, __LINE__,
 				ctrl->gpio_conf->gpio_num_info->gpio_num[pd->seq_val]);
@@ -1546,10 +1545,10 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[pd->seq_val],
 				(int) pd->config_val);
+			break;
 #ifdef CONFIG_MACH_YULONG
 			}
 #endif
-			break;
 		case SENSOR_VREG:
 			if (pd->seq_val >= CAM_VREG_MAX) {
 				pr_err("%s vreg index %d >= max %d\n", __func__,
@@ -1563,28 +1562,24 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 						pd->seq_val);
 			if (ps) {
 				if (pd->seq_val < ctrl->num_vreg)
-					msm_camera_config_single_vreg(ctrl->dev,
-					&ctrl->cam_vreg[pd->seq_val],
-					(struct regulator **)&ps->data[0],
-					0);
-				else
-					pr_err("%s:%d:seq_val:%d > num_vreg: %d\n"
-						, __func__, __LINE__,
-						pd->seq_val, ctrl->num_vreg);
-
-			if (ps) {
+                {
 #ifdef CONFIG_MACH_YULONG
 				if (msm_sensor_is_probed(sensor_board_info->sensor_info->position)) {
 					CDBG("camera use Sx voltage,and sensor probe ok,so not disable voltages-VREG\n");
 				} else {
-#endif
-				msm_camera_config_single_vreg(ctrl->dev,
+#endif       
+					msm_camera_config_single_vreg(ctrl->dev,
 					&ctrl->cam_vreg[pd->seq_val],
 					(struct regulator **)&ps->data[0],
 					0);
 #ifdef CONFIG_MACH_YULONG
 				}
 #endif
+                    }
+				else
+					pr_err("%s:%d:seq_val:%d > num_vreg: %d\n"
+						, __func__, __LINE__,
+						pd->seq_val, ctrl->num_vreg);
 			} else
 				pr_err("%s error in power up/down seq data\n",
 								__func__);
@@ -1606,7 +1601,6 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 		}
 	}
 	if (ctrl->cam_pinctrl_status) {
-
 #ifndef CONFIG_MACH_YULONG
 		ret = pinctrl_select_state(ctrl->pinctrl_info.pinctrl,
 				ctrl->pinctrl_info.gpio_state_suspend);
