@@ -120,6 +120,34 @@ enum camerab_mode_t {
 	CAMERA_MODE_INVALID = (1<<2),
 };
 
+#ifdef CONFIG_MACH_YULONG
+#define SENSOR_ID_OV13850 0xD850
+#define MODULE_TECH_OV13850 (SENSOR_ID_OV13850 << 16 | 0x06)
+#define MODULE_SUNNY_OV13850 (SENSOR_ID_OV13850 << 16 | 0x01)
+#define MODULE_FOXCONN_OV13850 (SENSOR_ID_OV13850 << 16 | 0x11)
+
+#define SENSOR_ID_8865 0x8865
+#define MODULE_SUNNY_8865 (SENSOR_ID_8865 << 16 | 0x01)
+#define MODULE_OFILM_8865 (SENSOR_ID_8865 << 16 | 0x07)
+#define MODULE_FOXCONN_8865 (SENSOR_ID_8865 << 16 | 0x11)
+#define MODULE_TECH_8865 (SENSOR_ID_8865 << 16 | 0x06)
+
+#define SENSOR_ID_OV5648 0x5648
+#define MODULE_SUNNY_OV5648 (SENSOR_ID_OV5648 << 16 | 0x01)
+#define MODULE_OFILM_OV5648 (SENSOR_ID_OV5648 << 16 | 0x07)
+#define MODULE_TECH_OV5648 (SENSOR_ID_OV5648 << 16 | 0x06)
+
+#define SENSOR_ID_OV5693 0x5690
+#define MODULE_TECH_OV5693 (SENSOR_ID_OV5693 << 16 | 0x06)
+
+#define SENSOR_ID_IMX135 0x0135
+#define MODULE_SUNNY_IMX135 (SENSOR_ID_IMX135 << 16 | 0x01)
+#define MODULE_FOXCONN_IMX135 (SENSOR_ID_IMX135 << 16 | 0x02)
+
+
+#define SENSOR_ID_IMX219 0x0219
+#endif
+
 enum sensor_stats_type {
 	YRGB,
 	YYYY,
@@ -190,6 +218,9 @@ struct msm_sensor_init_params {
 	enum camb_position_t position;
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
+#ifdef CONFIG_MACH_YULONG
+	uint32_t module_id;
+#endif
 };
 
 struct msm_sensor_id_info_t {
